@@ -15,7 +15,7 @@ from math import ceil
 from tqdm import tqdm
 
 
-def tag_search(tag, page=1, num_retries=30, wait_time=15):
+def tag_search(tag, page=1, num_retries=30, wait_time=30):
     while num_retries > 0:
         try:
             search = AO3.Search(tags=tag)
@@ -39,7 +39,7 @@ def print_results(search):
         print(result)
 
 
-def get_work_id(search_result, num_retries=30, wait_time=15):
+def get_work_id(search_result, num_retries=30, wait_time=30):
     while num_retries > 0:
         try:
             work_id = search_result.id
@@ -53,7 +53,7 @@ def get_work_id(search_result, num_retries=30, wait_time=15):
     return
 
 
-def get_work(work_id, num_retries=30, wait_time=15):
+def get_work(work_id, num_retries=30, wait_time=30):
     while num_retries > 0:
         try:
             work = AO3.Work(work_id)
