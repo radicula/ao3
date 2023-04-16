@@ -11,7 +11,7 @@ actively maintained. One notable bug in the current version is that you can't
 access search results for any search that returns >1,000 fics (which includes
 Dead Dove). So, I've forked and am using my own version of it with this one
 small bug fixed (you'll see that the import statement somewhat clumsily
-reflects this as I didn't want to bother making a new venv). You'll be fine and
+reflects this as I didn't want to bother making a new venv). You'll be fine as
 long as you're only looking at smaller tags, or else you can also use the
 forked version.
 
