@@ -17,6 +17,8 @@ forked version.
 
 ## To run:
 
+This is wrong i'll fix it in a bit
+
 - Install `requirements.txt` using `pip install -r requirements.txt` or
   similar. This was written using `Python 3.8.10`.
 - Run `python3 ao3-stats.py`.
