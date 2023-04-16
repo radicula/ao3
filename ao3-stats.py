@@ -7,7 +7,7 @@ Not fancy. A little more Comp Sci 101 than SWE.
 Not linted. Sorry in advance.
 """
 
-import AO3
+import AO3_fork as AO3
 import json
 import time
 import yaml
@@ -15,7 +15,7 @@ from math import ceil
 from tqdm import tqdm
 
 
-def tag_search(tag, page=1, num_retries=5, wait_time=15):
+def tag_search(tag, page=1, num_retries=30, wait_time=15):
     while num_retries > 0:
         try:
             search = AO3.Search(tags=tag)
@@ -27,7 +27,7 @@ def tag_search(tag, page=1, num_retries=5, wait_time=15):
                     "({} retries remaining)...".format(num_retries))
             time.sleep(wait_time)
             num_retries -= 1
-    print("Something is very wrong. Skipping this page.")
+    print("Something is very wrong. Skipping this page. Everything will probably break.")
     return 
 
 
@@ -39,7 +39,7 @@ def print_results(search):
         print(result)
 
 
-def get_work_id(search_result, num_retries=5, wait_time=15):
+def get_work_id(search_result, num_retries=30, wait_time=15):
     while num_retries > 0:
         try:
             work_id = search_result.id
@@ -53,7 +53,7 @@ def get_work_id(search_result, num_retries=5, wait_time=15):
     return
 
 
-def get_work(work_id, num_retries=5, wait_time=15):
+def get_work(work_id, num_retries=30, wait_time=15):
     while num_retries > 0:
         try:
             work = AO3.Work(work_id)
