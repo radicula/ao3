@@ -10,16 +10,26 @@ Not linted. Sorry in advance.
 import AO3
 import json
 import time
-from datetime import datetime
+import yaml
 from math import ceil
 from tqdm import tqdm
 
 
-def tag_search(tag, page=1):
-    search = AO3.Search(tags=tag)
-    search.page = page
-    search.update()
-    return search
+def tag_search(tag, page=1, num_retries=5, wait_time=15):
+    while num_retries > 0:
+        try:
+            search = AO3.Search(tags=tag)
+            search.page = page
+            search.update()
+            return search
+        except AO3.utils.HTTPError:
+            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
+                    "({} retries remaining)...".format(num_retries))
+            time.sleep(wait_time)
+            num_retries -= 1
+    print("Something is very wrong. Skipping this page.")
+    return 
+
 
 
 def print_results(search):
@@ -28,20 +38,36 @@ def print_results(search):
     for result in search.results:
         print(result)
 
-def get_work_id(search_result, num_retries=5, wait_time=5):
+
+def get_work_id(search_result, num_retries=5, wait_time=15):
     while num_retries > 0:
         try:
             work_id = search_result.id
             return work_id
-        except HTTPError:
-            print("Rate limit exceeded. Waiting {} seconds " +
-                    "({} retries remaining)...".format(wait_time, num_retries))
+        except AO3.utils.HTTPError:
+            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
+                    "({} retries remaining)...".format(num_retries))
             time.sleep(wait_time)
             num_retries -= 1
     print("Something is very wrong. Skipping this work; entire process may fail.")
-    return []
+    return
+
+
+def get_work(work_id, num_retries=5, wait_time=15):
+    while num_retries > 0:
+        try:
+            work = AO3.Work(work_id)
+            return work
+        except AO3.utils.HTTPError:
+            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
+                    "({} retries remaining)...".format(num_retries))
+            num_retries -= 1
+    print("Something is very wrong. Skipping this work; entire process may fail.")
+    return
+
 
 def main():
+
     tag = input("\nWhat tag would you like to investigate? " + 
             "(copy and paste it exactly!) ")
     print("Investigating '{}'...".format(tag))
@@ -59,7 +85,7 @@ def main():
     print("Processing {} fics (this may take some time) ...".format(len(work_ids)))
     works = []
     for work_id in tqdm(work_ids):
-        works.append(AO3.Work(work_id))
+        works.append(get_work(work_id))
 
     work_info = {}
     for work in works:
@@ -89,10 +115,9 @@ def main():
         work_info['date_published'] = str(work.date_published)
         work_info['date_updated'] = str(work.date_updated)
 
-    time = datetime.now()
+    date = time.strftime("%Y%m%d", time.gmtime())
     filename = "ao3_stats_{}_{}.json".format(
-            ''.join(l for l in tag if l.isalnum()),
-            str(time.year) + str(time.month) + str(time.day))
+            ''.join(l for l in tag if l.isalnum()), date)
     print("Saving results to '{}'...".format(filename))
     with open(filename, "w") as filepath:
         json.dump(work_info, filepath, indent = 4)
