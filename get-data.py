@@ -1,56 +1,17 @@
 """
-Little program to scrape some basic information about a given AO3 tag.
-Not fancy. A little more Comp Sci 101 than SWE.
-
-2023 April 15
+Get work info from a list of IDs, 
+provided as a command line argument.
 
 Not linted. Sorry in advance.
 """
 
 import AO3_fork as AO3
 import json
+import sys
 import time
 import yaml
 from math import ceil
 from tqdm import tqdm
-
-
-def tag_search(tag, page=1, num_retries=30, wait_time=30):
-    while num_retries > 0:
-        try:
-            search = AO3.Search(tags=tag)
-            search.page = page
-            search.update()
-            return search
-        except AO3.utils.HTTPError:
-            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
-                    "({} retries remaining)...".format(num_retries))
-            time.sleep(wait_time)
-            num_retries -= 1
-    print("Something is very wrong. Skipping this page. Everything will probably break.")
-    return 
-
-
-
-def print_results(search):
-    # Just for debugging help
-    print(search.total_results)
-    for result in search.results:
-        print(result)
-
-
-def get_work_id(search_result, num_retries=30, wait_time=30):
-    while num_retries > 0:
-        try:
-            work_id = search_result.id
-            return work_id
-        except AO3.utils.HTTPError:
-            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
-                    "({} retries remaining)...".format(num_retries))
-            time.sleep(wait_time)
-            num_retries -= 1
-    print("Something is very wrong. Skipping this work; entire process may fail.")
-    return
 
 
 def get_work(work_id, num_retries=30, wait_time=30):
@@ -58,9 +19,11 @@ def get_work(work_id, num_retries=30, wait_time=30):
         try:
             work = AO3.Work(work_id)
             return work
-        except AO3.utils.HTTPError:
-            print("Rate limit exceeded. Waiting {} seconds ".format(wait_time) +
+        except (AO3.utils.HTTPError, MaxRetryError) as e:
+            print("Rate limit exceeded on work {}. ".format(work_id) +
+                    "Waiting {} seconds ".format(wait_time) +
                     "({} retries remaining)...".format(num_retries))
+            time.sleep(wait_time)
             num_retries -= 1
     print("Something is very wrong. Skipping this work; entire process may fail.")
     return
@@ -68,27 +31,17 @@ def get_work(work_id, num_retries=30, wait_time=30):
 
 def main():
 
-    tag = input("\nWhat tag would you like to investigate? " + 
-            "(copy and paste it exactly!) ")
-    print("Investigating '{}'...".format(tag))
+    with open(sys.argv[1], 'r') as input_file:
+        work_ids = json.load(input_file)
 
-    search = tag_search(tag)
-    num_pages = ceil(float(search.total_results)/20.0)
-
-    print("Processing {} pages of search results ...".format(num_pages))
-    work_ids = []
-    for page in tqdm(range(1, num_pages + 1)):
-        s = tag_search(tag, page)
-        for result in s.results:
-            work_ids.append(get_work_id(result))
-
-    print("Processing {} fics (this may take some time) ...".format(len(work_ids)))
+    print("\nProcessing {} fics (this may take some time) ...".format(len(work_ids)))
     works = []
     for work_id in tqdm(work_ids):
         works.append(get_work(work_id))
 
-    work_info = {}
+    works_info = []
     for work in works:
+        work_info = {}
         work_info['id'] = work.id
         work_info['bookmarks'] = work.bookmarks
         work_info['categories'] = work.categories
@@ -114,13 +67,14 @@ def main():
         work_info['date_edited'] = str(work.date_edited)
         work_info['date_published'] = str(work.date_published)
         work_info['date_updated'] = str(work.date_updated)
+        works_info.append(work_info)
 
     date = time.strftime("%Y%m%d", time.gmtime())
     filename = "ao3_stats_{}_{}.json".format(
             ''.join(l for l in tag if l.isalnum()), date)
     print("Saving results to '{}'...".format(filename))
     with open(filename, "w") as filepath:
-        json.dump(work_info, filepath, indent = 4)
+        json.dump(works_info, filepath, indent = 4)
     print("Done!")
     print("")
 
