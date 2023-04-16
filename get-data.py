@@ -28,6 +28,9 @@ def get_work(work_id, num_retries=60, wait_time=60):
                     "({} retries remaining)...".format(num_retries))
             time.sleep(wait_time)
             num_retries -= 1
+        except AO3.utils.InvalidIdError:
+            print("Could not find work with id {}. Skipping.".format(work_id))
+            return
     print("Something is very wrong. Skipping this work; entire process may fail.")
     return
 
@@ -88,17 +91,20 @@ def main():
     if start_index == 0:
         with open(bad_filepath, 'w') as bad_file:
             first_work = get_work(work_ids[0])
-            json.dump([get_work_info(first_work)], bad_file)
-            bad_file.write('\n')
+            if first_work is not None:
+                json.dump([get_work_info(first_work)], bad_file)
+                bad_file.write('\n')
 
     print("\nProcessing {} fics (this may take some time) ...".format(
         len(work_ids)))
     for i in tqdm(range(start_index + 1, len(work_ids)),
             initial = start_index + 1,
             total = len(work_ids)):
-        with open(bad_filepath, 'a') as stream:
-            json.dump([get_work_info(get_work(work_ids[i]))], stream)
-            stream.write('\n')
+        with open(bad_filepath, 'a+') as stream:
+            work = get_work(work_ids[i])
+            if work is not None:
+                json.dump([get_work_info(work)], stream)
+                stream.write('\n')
    
     # Yep so here's re-reading in the whole bad JSON
     # (just in case collection stopped and was restarted midway)
