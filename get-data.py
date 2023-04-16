@@ -80,7 +80,7 @@ def main():
     date = time.strftime("%Y%m%d", time.gmtime())
     bad_filepath = "temp_{}_{}.json".format(tag, date)
 
-    # This is kind of gross but pickling the work objects didn't work
+    # This is kind of gross but pickling the AO3.Work objects didn't work
     # so this is what we're doing to allow restarting mid-collection:
     # Making a bad, incorrect JSON as the in-progress file
     # and then fixing it once everything is done. Sorry
@@ -88,25 +88,29 @@ def main():
     if start_index == 0:
         with open(bad_filepath, 'w') as bad_file:
             first_work = get_work(work_ids[0])
-            json.dump(first_work, bad_file)
+            json.dump([get_work_info(first_work)], bad_file)
+            bad_file.write('\n')
 
     print("\nProcessing {} fics (this may take some time) ...".format(
         len(work_ids)))
-    for i in tqdm(range(start_index + 1, len(work_ids) + 1)):
+    for i in tqdm(range(start_index + 1, len(work_ids)),
+            initial = start_index + 1,
+            total = len(work_ids)):
         with open(bad_filepath, 'a') as stream:
-            json.dump(get_work_info(get_work(work_id[i])), stream)
+            json.dump([get_work_info(get_work(work_ids[i]))], stream)
+            stream.write('\n')
    
     # Yep so here's re-reading in the whole bad JSON
     # (just in case collection stopped and was restarted midway)
     all_work_info = []
     with open(bad_filepath, 'r') as stream:
         for line in stream.readlines():
-            all_work_info.append(json.loads(line))
+            all_work_info.append(json.loads(line)[0])
 
     filename = "ao3_stats_{}_{}.json".format(tag, date)
     print("Saving results to '{}'...".format(filename))
     with open(filename, "w") as filepath:
-        json.dump(all_works_info, filepath, indent = 4)
+        json.dump(all_work_info, filepath, indent = 4)
     print("Done!")
     print("")
 

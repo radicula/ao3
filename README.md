@@ -45,7 +45,8 @@ should enter for the prompt).
 
 Similarly, you can restart midway through after failure for step 2. You will enter
 the work ID for the _last successfully processed work_ and collection will
-restart on the next work after that.
+restart on the next work after that. Is this inconsistent with how restarting
+midway works for `get-works`? Yes. Sorry.
 
 **NOTE:** The rate limits on this unofficial API are *very low* so any sizeable
 collection will take quite a while. I find I have to wait 5 minutes or so every
