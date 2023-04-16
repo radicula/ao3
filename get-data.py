@@ -9,18 +9,21 @@ import AO3_fork as AO3
 import json
 import sys
 import time
-import yaml
 from math import ceil
+from requests import exceptions
 from tqdm import tqdm
 
 
-def get_work(work_id, num_retries=30, wait_time=30):
+def get_work(work_id, num_retries=60, wait_time=60):
     while num_retries > 0:
         try:
             work = AO3.Work(work_id)
             return work
-        except (AO3.utils.HTTPError, MaxRetryError) as e:
-            print("Rate limit exceeded on work {}. ".format(work_id) +
+        except (AO3.utils.HTTPError, 
+                exceptions.Timeout,
+                exceptions.TooManyRedirects,
+                exceptions.RequestException) as e:
+            print("Failed with error '{}' on work {}. ".format(e, work_id) +
                     "Waiting {} seconds ".format(wait_time) +
                     "({} retries remaining)...".format(num_retries))
             time.sleep(wait_time)
@@ -29,18 +32,7 @@ def get_work(work_id, num_retries=30, wait_time=30):
     return
 
 
-def main():
-
-    with open(sys.argv[1], 'r') as input_file:
-        work_ids = json.load(input_file)
-
-    print("\nProcessing {} fics (this may take some time) ...".format(len(work_ids)))
-    works = []
-    for work_id in tqdm(work_ids):
-        works.append(get_work(work_id))
-
-    works_info = []
-    for work in works:
+def get_work_info(work):
         work_info = {}
         work_info['id'] = work.id
         work_info['bookmarks'] = work.bookmarks
@@ -67,14 +59,54 @@ def main():
         work_info['date_edited'] = str(work.date_edited)
         work_info['date_published'] = str(work.date_published)
         work_info['date_updated'] = str(work.date_updated)
-        works_info.append(work_info)
+        return work_info
+
+
+def main():
+
+    work_ids = []
+    in_filepath = sys.argv[1]
+    with open(in_filepath, 'r') as input_file:
+        for line in input_file.readlines():
+            work_ids.append(line.rstrip('\n'))
+
+    tag = in_filepath.split('_')[2]
+
+    start_id = str(int(input(
+        "(optional) What work ID do you want to begin on? " + 
+        "(will re-collect all IDs after this one) ") or work_ids[0]))
+    start_index = work_ids.index(start_id)
 
     date = time.strftime("%Y%m%d", time.gmtime())
-    filename = "ao3_stats_{}_{}.json".format(
-            ''.join(l for l in tag if l.isalnum()), date)
+    bad_filepath = "temp_{}_{}.json".format(tag, date)
+
+    # This is kind of gross but pickling the work objects didn't work
+    # so this is what we're doing to allow restarting mid-collection:
+    # Making a bad, incorrect JSON as the in-progress file
+    # and then fixing it once everything is done. Sorry
+    # but I didn't want to have to completely re-write the file every time
+    if start_index == 0:
+        with open(bad_filepath, 'w') as bad_file:
+            first_work = get_work(work_ids[0])
+            json.dump(first_work, bad_file)
+
+    print("\nProcessing {} fics (this may take some time) ...".format(
+        len(work_ids)))
+    for i in tqdm(range(start_index + 1, len(work_ids) + 1)):
+        with open(bad_filepath, 'a') as stream:
+            json.dump(get_work_info(get_work(work_id[i])), stream)
+   
+    # Yep so here's re-reading in the whole bad JSON
+    # (just in case collection stopped and was restarted midway)
+    all_work_info = []
+    with open(bad_filepath, 'r') as stream:
+        for line in stream.readlines():
+            all_work_info.append(json.loads(line))
+
+    filename = "ao3_stats_{}_{}.json".format(tag, date)
     print("Saving results to '{}'...".format(filename))
     with open(filename, "w") as filepath:
-        json.dump(works_info, filepath, indent = 4)
+        json.dump(all_works_info, filepath, indent = 4)
     print("Done!")
     print("")
 
